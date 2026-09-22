@@ -63,13 +63,26 @@ export function saveFoodOverride(foodName, macroData) {
   if (!foodName || !macroData) return;
   try {
     const overrides = getFoodOverrides();
-    const key = removeGreekAccents(foodName.trim());
-    overrides[key] = {
+    const cleanInputKey = removeGreekAccents(foodName.trim());
+    
+    const overrideVal = {
       calories: Math.max(0, parseInt(macroData.calories, 10) || 0),
       protein: Math.max(0, parseInt(macroData.protein, 10) || 0),
       carbs: Math.max(0, parseInt(macroData.carbs, 10) || 0),
       fat: Math.max(0, parseInt(macroData.fat, 10) || 0)
     };
+
+    // Save under direct input key
+    overrides[cleanInputKey] = overrideVal;
+
+    // Map override to any matching database item key so search pre-fills corrected values
+    GREEK_FOOD_DATABASE.forEach(dbItem => {
+      const dbKey = removeGreekAccents(dbItem.name);
+      if (dbKey.includes(cleanInputKey) || cleanInputKey.includes(dbKey)) {
+        overrides[dbKey] = overrideVal;
+      }
+    });
+
     localStorage.setItem(STORAGE_KEY_FOOD_OVERRIDES, JSON.stringify(overrides));
   } catch (e) {}
 }
@@ -94,14 +107,20 @@ export function searchFoodDatabase(query) {
   return GREEK_FOOD_DATABASE.filter(item =>
     removeGreekAccents(item.name).includes(cleanQ)
   ).map(item => {
-    const key = removeGreekAccents(item.name);
-    if (overrides[key]) {
+    const dbKey = removeGreekAccents(item.name);
+    let matchingOverride = overrides[dbKey];
+    if (!matchingOverride) {
+      const foundKey = Object.keys(overrides).find(k => k.length >= 3 && (k.includes(dbKey) || dbKey.includes(k)));
+      if (foundKey) matchingOverride = overrides[foundKey];
+    }
+
+    if (matchingOverride) {
       return {
         ...item,
-        calories: overrides[key].calories,
-        protein: overrides[key].protein,
-        carbs: overrides[key].carbs,
-        fat: overrides[key].fat
+        calories: matchingOverride.calories,
+        protein: matchingOverride.protein,
+        carbs: matchingOverride.carbs,
+        fat: matchingOverride.fat
       };
     }
     return item;
