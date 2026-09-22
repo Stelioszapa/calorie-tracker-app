@@ -73,22 +73,31 @@ export default function App() {
   };
 
   const handleSaveMeal = (mealData) => {
-    if (mealData.id) {
-      updateMeal(mealData.id, mealData);
-    } else {
-      addMeal(mealData);
-      
-      // Trigger subtle confetti if added to today and total reaches target range
-      const newTotal = meals.reduce((sum, m) => sum + m.calories, 0) + mealData.calories;
-      if (selectedDate === getTodayStr() && newTotal >= dailyTarget * 0.9 && newTotal <= dailyTarget * 1.05) {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
+    try {
+      if (mealData.id) {
+        updateMeal(mealData.id, mealData);
+      } else {
+        addMeal(mealData);
+        
+        // Trigger subtle confetti if added to today and total reaches target range
+        const safeMeals = Array.isArray(meals) ? meals : [];
+        const addedKcal = parseInt(mealData.calories, 10) || 0;
+        const newTotal = safeMeals.reduce((sum, m) => sum + (m && m.calories ? parseInt(m.calories, 10) || 0 : 0), 0) + addedKcal;
+        
+        if (selectedDate === getTodayStr() && dailyTarget > 0 && newTotal >= dailyTarget * 0.9 && newTotal <= dailyTarget * 1.05) {
+          try {
+            confetti({
+              particleCount: 80,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+          } catch (e) {}
+        }
       }
+      refreshMeals(selectedDate);
+    } catch (err) {
+      console.error('Error saving meal:', err);
     }
-    refreshMeals(selectedDate);
   };
 
   const handleDeleteMeal = (id) => {

@@ -576,7 +576,7 @@
           {isModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass-modal">
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 overflow-visible relative">
-                <h3 className="font-bold text-lg text-white">{editingMeal ? 'Επεξεργασία' : 'Προσθήκη'} Γεύματος</h3>
+                <h3 className="font-bold text-lg text-white">{editingMeal && editingMeal.id ? 'Επεξεργασία' : 'Προσθήκη'} Γεύματος</h3>
 
                 <form onSubmit={handleSaveMeal} className="space-y-3 pt-1">
 
