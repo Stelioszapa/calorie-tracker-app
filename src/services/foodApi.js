@@ -48,13 +48,23 @@ export const GREEK_FOOD_DATABASE = [
   { name: 'Πρωτεΐνη Whey (σκόνη)', calories: 380, protein: 80, carbs: 7, fat: 4, perGrams: 100 }
 ];
 
+// Helper function to remove Greek accent marks (tonoi / dialytika) and normalize text for accent-insensitive search
+export function removeGreekAccents(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ς/g, 'σ');
+}
+
 export function searchFoodDatabase(query) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) {
     return [];
   }
-  const cleanQ = query.trim().toLowerCase();
-  
-  return GREEK_FOOD_DATABASE.filter(item => 
-    item.name.toLowerCase().includes(cleanQ)
+  const cleanQ = removeGreekAccents(query.trim());
+
+  return GREEK_FOOD_DATABASE.filter(item =>
+    removeGreekAccents(item.name).includes(cleanQ)
   ).slice(0, 8);
 }

@@ -154,13 +154,15 @@ export default function AddMealModal({
     setUserFavorites(updated);
   };
 
+  const isEditMode = Boolean(editingMeal && editingMeal.id);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim() || !calories) return;
 
     const mealData = {
-      id: editingMeal ? editingMeal.id : undefined,
-      date: selectedDate,
+      id: isEditMode ? editingMeal.id : undefined,
+      date: editingMeal && editingMeal.date ? editingMeal.date : selectedDate,
       name: name.trim(),
       quantity: quantityText || `${grams}g`,
       calories: parseInt(calories, 10) || 0,
@@ -185,11 +187,11 @@ export default function AddMealModal({
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center space-x-2">
             <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
-              {editingMeal ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+              {isEditMode ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">
-                {editingMeal ? 'Επεξεργασία Γεύματος' : 'Προσθήκη Νέου Γεύματος'}
+                {isEditMode ? 'Επεξεργασία Γεύματος' : 'Προσθήκη Νέου Γεύματος'}
               </h2>
               <p className="text-xs text-slate-400">
                 Ημερομηνία: <span className="text-emerald-400 font-medium">{selectedDate}</span>
@@ -492,7 +494,7 @@ export default function AddMealModal({
               type="submit"
               className="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold text-sm hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition"
             >
-              {editingMeal ? 'Ενημέρωση' : 'Προσθήκη'}
+              {isEditMode ? 'Ενημέρωση' : 'Προσθήκη'}
             </button>
           </div>
 

@@ -100,10 +100,19 @@
       { name: 'Σουβλάκι Κοτόπουλο Καλαμάκι', calories: 180, protein: 28, carbs: 0, fat: 7 }
     ];
 
+    function removeGreekAccents(str) {
+      if (!str) return '';
+      return str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ς/g, 'σ');
+    }
+
     function searchFoodDatabase(q) {
       if (!q || q.trim().length < 2) return [];
-      const cleanQ = q.trim().toLowerCase();
-      return GREEK_FOOD_DATABASE.filter(item => item.name.toLowerCase().includes(cleanQ)).slice(0, 7);
+      const cleanQ = removeGreekAccents(q.trim());
+      return GREEK_FOOD_DATABASE.filter(item => removeGreekAccents(item.name).includes(cleanQ)).slice(0, 7);
     }
 
     function getProfiles() {
@@ -242,7 +251,7 @@
         const fNum = parseInt(foodFat, 10) || 0;
         const activeId = activeProfile.id;
 
-        if (editingMeal) {
+        if (editingMeal && editingMeal.id) {
           const idx = raw.findIndex(m => m.id === editingMeal.id);
           if (idx !== -1) {
             raw[idx] = {
@@ -260,7 +269,7 @@
           raw.push({
             id: 'm_' + Date.now(),
             profileId: activeId,
-            date: selectedDate,
+            date: editingMeal && editingMeal.date ? editingMeal.date : selectedDate,
             name: foodName,
             quantity: foodQty,
             calories: kcalNum,
