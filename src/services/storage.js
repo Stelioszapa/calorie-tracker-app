@@ -1,6 +1,7 @@
 const STORAGE_KEY_MEALS = 'nutrical_meals_v1';
 const STORAGE_KEY_PROFILES = 'nutrical_profiles_v1';
 const STORAGE_KEY_ACTIVE_PROFILE = 'nutrical_active_profile_v1';
+const STORAGE_KEY_FAVORITES = 'nutrical_user_favorites_v1';
 
 export const DEFAULT_PROFILES = [
   {
@@ -34,21 +35,130 @@ export const MEAL_CATEGORIES = [
   { id: 'snack', name: 'Σνακ', icon: 'Apple', color: 'from-pink-500 to-rose-500', bgColor: 'bg-pink-500/10', textColor: 'text-pink-400' }
 ];
 
-// Food Presets for fast entry with Macronutrients (Protein, Carbs, Fat in grams)
-export const FOOD_PRESETS = [
-  { name: 'Χωριάτικη Σαλάτα', category: 'lunch', quantity: '1 μερίδα (350g)', calories: 420, protein: 12, carbs: 18, fat: 34 },
-  { name: 'Φρέντο Εσπρέσο (χωρίς ζάχαρη)', category: 'breakfast', quantity: '1 ποτήρι', calories: 5, protein: 0, carbs: 1, fat: 0 },
-  { name: 'Φρέντο Μέτριο', category: 'breakfast', quantity: '1 ποτήρι', calories: 60, protein: 1, carbs: 14, fat: 0 },
-  { name: 'Τοστ Γαλοπούλα & Τυρί', category: 'breakfast', quantity: '1 τεμάχιο', calories: 280, protein: 16, carbs: 32, fat: 10 },
-  { name: 'Ομελέτα 3 Αυγά & Φέτα', category: 'breakfast', quantity: '1 πιάτο', calories: 380, protein: 24, carbs: 4, fat: 30 },
-  { name: 'Σουβλάκι Κοτόπουλο Πίτα Απ\' όλα', category: 'dinner', quantity: '1 τεμάχιο', calories: 550, protein: 32, carbs: 48, fat: 22 },
-  { name: 'Στήθος Κοτόπουλο με Ρύζι', category: 'lunch', quantity: '200g κοτόπουλο / 150g ρύζι', calories: 480, protein: 46, carbs: 50, fat: 8 },
-  { name: 'Μπιφτέκια Μοσχαρίσια με Πατάτες', category: 'lunch', quantity: '2 μπιφτέκια & πατάτες', calories: 620, protein: 38, carbs: 45, fat: 30 },
-  { name: 'Γιαούρτι 2% με Μέλι & Καρύδια', category: 'snack', quantity: '1 μπολ', calories: 240, protein: 14, carbs: 26, fat: 8 },
-  { name: 'Μήλο & 10 Αμύγδαλα', category: 'snack', quantity: '1 μερίδα', calories: 160, protein: 4, carbs: 22, fat: 7 },
-  { name: 'Πρωτεϊνικό Shake', category: 'snack', quantity: '1 scoop / 300ml γάλα', calories: 220, protein: 30, carbs: 14, fat: 4 },
-  { name: 'Σολωμός ψητός με Λαχανικά', category: 'dinner', quantity: '200g σολωμός', calories: 450, protein: 38, carbs: 10, fat: 28 }
-];
+// Smart Category Staples
+export const CATEGORY_SMART_CHIPS = {
+  breakfast: [
+    { name: 'Ομελέτα 3 Αυγά & Φέτα', calories: 380, protein: 24, carbs: 4, fat: 30, quantity: '1 πιάτο' },
+    { name: 'Γιαούρτι 2% με Βρώμη & Μέλι', calories: 280, protein: 16, carbs: 42, fat: 5, quantity: '1 μπολ' },
+    { name: 'Τοστ Γαλοπούλα & Τυρί', calories: 280, protein: 16, carbs: 32, fat: 10, quantity: '1 τεμάχιο' },
+    { name: 'Φρέντο Μέτριο', calories: 60, protein: 1, carbs: 14, fat: 0, quantity: '1 ποτήρι' }
+  ],
+  lunch: [
+    { name: 'Στήθος Κοτόπουλο με Ρύζι', calories: 480, protein: 46, carbs: 50, fat: 8, quantity: '200g κοτόπουλο / 150g ρύζι' },
+    { name: 'Μπιφτέκια Μοσχαρίσια με Πατάτες', calories: 620, protein: 38, carbs: 45, fat: 30, quantity: '2 μπιφτέκια & πατάτες' },
+    { name: 'Χωριάτικη Σαλάτα & Ψωμί', calories: 420, protein: 12, carbs: 28, fat: 28, quantity: '1 μερίδα' },
+    { name: 'Σολωμός Ψητός με Λαχανικά', calories: 450, protein: 38, carbs: 10, fat: 28, quantity: '200g σολωμός' }
+  ],
+  dinner: [
+    { name: 'Σουβλάκι Κοτόπουλο Πίτα Απ\' όλα', calories: 550, protein: 32, carbs: 48, fat: 22, quantity: '1 τεμάχιο' },
+    { name: 'Σαλάτα Σεφ με Τόνο & Αυγό', calories: 360, protein: 34, carbs: 12, fat: 18, quantity: '1 σαλάτα' },
+    { name: 'Ομελέτα Λαχανικών & Σαλάτα', calories: 310, protein: 20, carbs: 14, fat: 20, quantity: '1 πιάτο' }
+  ],
+  snack: [
+    { name: 'Πρωτεϊνικό Shake Whey', calories: 220, protein: 30, carbs: 14, fat: 4, quantity: '1 scoop' },
+    { name: 'Μήλο & 10 Αμύγδαλα', calories: 160, protein: 4, carbs: 22, fat: 7, quantity: '1 μερίδα' },
+    { name: 'Γιαούρτι 2% με Μέλι & Καρύδια', calories: 240, protein: 14, carbs: 26, fat: 8, quantity: '1 μπολ' }
+  ]
+};
+
+// --- User Favorites Functions ---
+export function getFavorites() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_FAVORITES);
+    const all = data ? JSON.parse(data) : [];
+    const activeId = getActiveProfileId();
+    return all.filter(f => !f.profileId || f.profileId === activeId);
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveFavorites(favs) {
+  localStorage.setItem(STORAGE_KEY_FAVORITES, JSON.stringify(favs));
+}
+
+export function addFavorite(meal) {
+  const activeId = getActiveProfileId();
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_FAVORITES);
+    const all = data ? JSON.parse(data) : [];
+
+    const cleanName = (meal.name || '').trim().toLowerCase();
+    const existingIndex = all.findIndex(f =>
+      (!f.profileId || f.profileId === activeId) &&
+      (f.name || '').trim().toLowerCase() === cleanName
+    );
+
+    if (existingIndex !== -1) {
+      // Overwrite/Update existing favorite with corrected macro values
+      all[existingIndex] = {
+        ...all[existingIndex],
+        quantity: meal.quantity || '1 μερίδα',
+        calories: Math.max(0, parseInt(meal.calories, 10) || 0),
+        protein: Math.max(0, parseInt(meal.protein, 10) || 0),
+        carbs: Math.max(0, parseInt(meal.carbs, 10) || 0),
+        fat: Math.max(0, parseInt(meal.fat, 10) || 0),
+        category: meal.category || 'lunch'
+      };
+    } else {
+      const newFav = {
+        id: 'fav_' + Date.now(),
+        profileId: activeId,
+        name: meal.name.trim(),
+        quantity: meal.quantity || '1 μερίδα',
+        calories: Math.max(0, parseInt(meal.calories, 10) || 0),
+        protein: Math.max(0, parseInt(meal.protein, 10) || 0),
+        carbs: Math.max(0, parseInt(meal.carbs, 10) || 0),
+        fat: Math.max(0, parseInt(meal.fat, 10) || 0),
+        category: meal.category || 'lunch'
+      };
+      all.push(newFav);
+    }
+
+    saveFavorites(all);
+    return getFavorites();
+  } catch (e) {
+    return [];
+  }
+}
+
+export function autoUpdateMatchingFavorite(meal) {
+  const activeId = getActiveProfileId();
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_FAVORITES);
+    const all = data ? JSON.parse(data) : [];
+    const cleanName = (meal.name || '').trim().toLowerCase();
+    const existingIndex = all.findIndex(f =>
+      (!f.profileId || f.profileId === activeId) &&
+      (f.name || '').trim().toLowerCase() === cleanName
+    );
+
+    if (existingIndex !== -1) {
+      all[existingIndex] = {
+        ...all[existingIndex],
+        quantity: meal.quantity || all[existingIndex].quantity,
+        calories: Math.max(0, parseInt(meal.calories, 10) || 0),
+        protein: Math.max(0, parseInt(meal.protein, 10) || 0),
+        carbs: Math.max(0, parseInt(meal.carbs, 10) || 0),
+        fat: Math.max(0, parseInt(meal.fat, 10) || 0),
+        category: meal.category || all[existingIndex].category
+      };
+      saveFavorites(all);
+    }
+  } catch (e) {}
+}
+
+export function deleteFavorite(id) {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_FAVORITES);
+    const all = data ? JSON.parse(data) : [];
+    const filtered = all.filter(f => f.id !== id);
+    saveFavorites(filtered);
+    return getFavorites();
+  } catch (e) {
+    return [];
+  }
+}
 
 // --- Profile Functions ---
 export function getProfiles() {
@@ -191,6 +301,7 @@ export function addMeal(meal) {
   };
   rawMeals.push(newMeal);
   saveRawMeals(rawMeals);
+  autoUpdateMatchingFavorite(newMeal);
   return newMeal;
 }
 
@@ -210,6 +321,7 @@ export function updateMeal(id, updatedData) {
       date: updatedData.date
     };
     saveRawMeals(rawMeals);
+    autoUpdateMatchingFavorite(rawMeals[index]);
     return rawMeals[index];
   }
   return null;

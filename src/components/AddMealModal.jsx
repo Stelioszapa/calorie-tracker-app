@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Edit2, Sparkles, Search, Scale } from 'lucide-react';
-import { MEAL_CATEGORIES, FOOD_PRESETS } from '../services/storage';
+import { X, Plus, Edit2, Sparkles, Search, Scale, Star, Trash2, Check } from 'lucide-react';
+import { MEAL_CATEGORIES, CATEGORY_SMART_CHIPS, getFavorites, addFavorite, deleteFavorite, autoUpdateMatchingFavorite } from '../services/storage';
 import { searchFoodDatabase } from '../services/foodApi';
 
 export default function AddMealModal({
@@ -22,10 +22,21 @@ export default function AddMealModal({
   // Search & Base Macro State
   const [searchResults, setSearchResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedBase, setSelectedBase] = useState(null); // { calories, protein, carbs, fat } per 100g
-  const [showPresets, setShowPresets] = useState(false);
+  const [selectedBase, setSelectedBase] = useState(null);
+
+  // Favorites State
+  const [userFavorites, setUserFavorites] = useState([]);
+  const [isSavedToFavs, setIsSavedToFavs] = useState(false);
+  const [activeTab, setActiveTab] = useState('favorites'); // 'favorites' | 'smartChips'
 
   const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setUserFavorites(getFavorites());
+      setIsSavedToFavs(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (editingMeal) {
@@ -84,13 +95,11 @@ export default function AddMealModal({
     setSelectedBase(item);
     setShowDropdown(false);
 
-    // Apply scaling based on current grams (default 100g)
     const currentGrams = grams > 0 ? grams : 100;
     setQuantityText(`${currentGrams}g`);
     calculateMacrosForGrams(item, currentGrams);
   };
 
-  // Calculate Macros dynamically based on Grams
   const calculateMacrosForGrams = (base, gVal) => {
     if (!base || gVal <= 0) return;
     const factor = gVal / 100;
@@ -100,7 +109,6 @@ export default function AddMealModal({
     setFat(Math.round(base.fat * factor).toString());
   };
 
-  // Grams Change Handler
   const handleGramsChange = (newGramsVal) => {
     const numGrams = parseInt(newGramsVal, 10) || 0;
     setGrams(numGrams);
@@ -111,27 +119,22 @@ export default function AddMealModal({
     }
   };
 
-  const handleSelectPreset = (preset) => {
-    setName(preset.name);
-    const pGrams = parseInt((preset.quantity || '').replace(/\D/g, ''), 10) || 100;
+  const handleSelectChipOrFavorite = (item) => {
+    setName(item.name);
+    const pGrams = parseInt((item.quantity || '').replace(/\D/g, ''), 10) || 100;
     setGrams(pGrams);
-    setQuantityText(preset.quantity);
-    setCalories(preset.calories.toString());
-    setProtein((preset.protein || 0).toString());
-    setCarbs((preset.carbs || 0).toString());
-    setFat((preset.fat || 0).toString());
-    setCategory(preset.category);
+    setQuantityText(item.quantity || `${pGrams}g`);
+    setCalories(item.calories.toString());
+    setProtein((item.protein || 0).toString());
+    setCarbs((item.carbs || 0).toString());
+    setFat((item.fat || 0).toString());
+    if (item.category) setCategory(item.category);
     setSelectedBase(null);
-    setShowPresets(false);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSaveToFavorites = () => {
     if (!name.trim() || !calories) return;
-
-    onSave({
-      id: editingMeal ? editingMeal.id : undefined,
-      date: selectedDate,
+    const updatedFavs = addFavorite({
       name,
       quantity: quantityText || `${grams}g`,
       calories: parseInt(calories, 10) || 0,
@@ -140,9 +143,39 @@ export default function AddMealModal({
       fat: parseInt(fat, 10) || 0,
       category
     });
+    setUserFavorites(updatedFavs);
+    setIsSavedToFavs(true);
+    setTimeout(() => setIsSavedToFavs(false), 2500);
+  };
 
+  const handleDeleteFavorite = (e, id) => {
+    e.stopPropagation();
+    const updated = deleteFavorite(id);
+    setUserFavorites(updated);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim() || !calories) return;
+
+    const mealData = {
+      id: editingMeal ? editingMeal.id : undefined,
+      date: selectedDate,
+      name: name.trim(),
+      quantity: quantityText || `${grams}g`,
+      calories: parseInt(calories, 10) || 0,
+      protein: parseInt(protein, 10) || 0,
+      carbs: parseInt(carbs, 10) || 0,
+      fat: parseInt(fat, 10) || 0,
+      category
+    };
+
+    autoUpdateMatchingFavorite(mealData);
+    onSave(mealData);
     onClose();
   };
+
+  const currentSmartChips = CATEGORY_SMART_CHIPS[category] || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass-modal animate-fade-in">
@@ -171,40 +204,89 @@ export default function AddMealModal({
           </button>
         </div>
 
-        {/* Quick Presets Toggle */}
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={() => setShowPresets(!showPresets)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-xs font-medium text-emerald-400 border border-emerald-500/20 transition"
-          >
-            <span className="flex items-center space-x-1.5">
-              <Sparkles className="w-4 h-4" />
-              <span>{showPresets ? 'Απόκρυψη Έτοιμων Επιλογών' : 'Γρήγορες Επιλογές / Presets'}</span>
-            </span>
-            <span className="text-slate-400 text-[10px]">({FOOD_PRESETS.length} έτοιμα)</span>
-          </button>
+        {/* Favorites & Smart Category Chips Section */}
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+            <div className="flex space-x-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('favorites')}
+                className={`px-3 py-1 rounded-lg font-bold transition flex items-center space-x-1 ${
+                  activeTab === 'favorites' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Star className="w-3.5 h-3.5 fill-current text-amber-400" />
+                <span>Τα Αγαπημένα μου ({userFavorites.length})</span>
+              </button>
 
-          {showPresets && (
-            <div className="mt-2 max-h-40 overflow-y-auto p-2 bg-slate-950/90 border border-slate-800 rounded-xl grid grid-cols-1 gap-1.5">
-              {FOOD_PRESETS.map((preset, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => handleSelectPreset(preset)}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800 cursor-pointer transition text-xs group"
-                >
-                  <div>
-                    <div className="font-medium text-slate-200 group-hover:text-emerald-400">
-                      {preset.name}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {preset.quantity} • P:{preset.protein}g C:{preset.carbs}g F:{preset.fat}g
-                    </div>
-                  </div>
-                  <div className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded">
-                    {preset.calories} kcal
-                  </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('smartChips')}
+                className={`px-3 py-1 rounded-lg font-bold transition flex items-center space-x-1 ${
+                  activeTab === 'smartChips' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Έξυπνα Chips ({currentSmartChips.length})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content: User Favorites */}
+          {activeTab === 'favorites' && (
+            <div className="min-h-[50px] max-h-36 overflow-y-auto p-2 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1">
+              {userFavorites.length === 0 ? (
+                <div className="text-center py-2 text-[11px] text-slate-500 italic">
+                  Δεν έχετε αποθηκεύσει ακόμα αγαπημένα γεύματα. Συμπληρώστε ένα γεύμα και πατήστε "⭐ Αποθήκευση στα Αγαπημένα"!
                 </div>
+              ) : (
+                userFavorites.map((fav) => (
+                  <div
+                    key={fav.id}
+                    onClick={() => handleSelectChipOrFavorite(fav)}
+                    className="p-2 bg-slate-900/80 hover:bg-slate-800 rounded-lg cursor-pointer transition flex items-center justify-between text-xs group border border-slate-800"
+                  >
+                    <div>
+                      <div className="font-bold text-white group-hover:text-amber-300 flex items-center space-x-1">
+                        <Star className="w-3 h-3 text-amber-400 fill-current" />
+                        <span>{fav.name}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {fav.quantity} • P:{fav.protein}g C:{fav.carbs}g F:{fav.fat}g
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-emerald-400 text-xs bg-emerald-500/10 px-2 py-0.5 rounded">
+                        {fav.calories} kcal
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteFavorite(e, fav.id)}
+                        className="text-slate-500 hover:text-rose-400 p-1 transition"
+                        title="Διαγραφή από τα αγαπημένα"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Tab Content: Category Smart Chips */}
+          {activeTab === 'smartChips' && (
+            <div className="flex flex-wrap gap-1.5 p-2 bg-slate-950/80 border border-slate-800 rounded-xl max-h-36 overflow-y-auto">
+              {currentSmartChips.map((chip, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSelectChipOrFavorite(chip)}
+                  className="px-2.5 py-1 bg-slate-900 border border-slate-700/80 hover:border-emerald-500 rounded-lg text-xs font-semibold text-slate-200 hover:text-emerald-300 transition text-left"
+                >
+                  {chip.name} <span className="text-[10px] text-emerald-400 font-bold">({chip.calories} kcal)</span>
+                </button>
               ))}
             </div>
           )}
@@ -239,8 +321,8 @@ export default function AddMealModal({
           {/* Food Name Search Input with Autocomplete Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center justify-between">
-              <span>Όνομα Τροφίμου (Αναζήτηση στην Τράπεζα Τροφίμων) *</span>
-              <span className="text-[10px] text-emerald-400 font-normal">Προαιρετική επιλογή από τη λίστα</span>
+              <span>Όνομα Τροφίμου (Αναζήτηση στην Τράπεζα) *</span>
+              <span className="text-[10px] text-emerald-400 font-normal">Προαιρετική αναζήτηση</span>
             </label>
 
             <div className="relative">
@@ -303,7 +385,6 @@ export default function AddMealModal({
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">g</span>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Υπολογίζει αυτόματα τις θερμίδες!</p>
             </div>
 
             <div>
@@ -320,7 +401,7 @@ export default function AddMealModal({
             </div>
           </div>
 
-          {/* Calories & Macronutrients Grid (Can be manually overridden) */}
+          {/* Calories & Macronutrients Grid */}
           <div className="grid grid-cols-4 gap-2">
             <div>
               <label className="block text-[11px] font-semibold text-emerald-400 mb-1">
@@ -383,6 +464,20 @@ export default function AddMealModal({
               />
             </div>
           </div>
+
+          {/* Quick Save to Personal Favorites Bar */}
+          {name.trim() && calories && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={handleSaveToFavorites}
+                className="w-full flex items-center justify-center space-x-1.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition"
+              >
+                {isSavedToFavs ? <Check className="w-4 h-4 text-emerald-400" /> : <Star className="w-4 h-4 fill-current text-amber-400" />}
+                <span>{isSavedToFavs ? 'Αποθηκεύτηκε στα Αγαπημένα!' : '⭐ Αποθήκευση στα Αγαπημένα μου'}</span>
+              </button>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center space-x-3 pt-3 border-t border-slate-800">
