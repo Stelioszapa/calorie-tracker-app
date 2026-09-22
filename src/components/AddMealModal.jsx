@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Edit2, Search, Scale, Star, Trash2, Check } from 'lucide-react';
 import { MEAL_CATEGORIES, getFavorites, addFavorite, deleteFavorite, autoUpdateMatchingFavorite } from '../services/storage';
-import { searchFoodDatabase } from '../services/foodApi';
+import { searchFoodDatabase, saveFoodOverride } from '../services/foodApi';
 
 export default function AddMealModal({
   isOpen,
@@ -134,7 +134,7 @@ export default function AddMealModal({
   const handleSaveToFavorites = () => {
     if (!name.trim() || !calories) return;
     const updatedFavs = addFavorite({
-      name,
+      name: name.trim(),
       quantity: quantityText || `${grams}g`,
       calories: parseInt(calories, 10) || 0,
       protein: parseInt(protein, 10) || 0,
@@ -158,6 +158,20 @@ export default function AddMealModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim() || !calories) return;
+
+    const mealGrams = grams > 0 ? grams : 100;
+    const factor = 100 / mealGrams;
+    const pKcal = Math.round((parseInt(calories, 10) || 0) * factor);
+    const pProtein = Math.round((parseInt(protein, 10) || 0) * factor);
+    const pCarbs = Math.round((parseInt(carbs, 10) || 0) * factor);
+    const pFat = Math.round((parseInt(fat, 10) || 0) * factor);
+
+    saveFoodOverride(name.trim(), {
+      calories: pKcal,
+      protein: pProtein,
+      carbs: pCarbs,
+      fat: pFat
+    });
 
     const mealData = {
       id: isEditMode ? editingMeal.id : undefined,

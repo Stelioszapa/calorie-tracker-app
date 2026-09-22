@@ -48,6 +48,32 @@ export const GREEK_FOOD_DATABASE = [
   { name: 'Πρωτεΐνη Whey (σκόνη)', calories: 380, protein: 80, carbs: 7, fat: 4, perGrams: 100 }
 ];
 
+const STORAGE_KEY_FOOD_OVERRIDES = 'nutrical_food_overrides_v1';
+
+export function getFoodOverrides() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_FOOD_OVERRIDES);
+    return data ? JSON.parse(data) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export function saveFoodOverride(foodName, macroData) {
+  if (!foodName || !macroData) return;
+  try {
+    const overrides = getFoodOverrides();
+    const key = removeGreekAccents(foodName.trim());
+    overrides[key] = {
+      calories: Math.max(0, parseInt(macroData.calories, 10) || 0),
+      protein: Math.max(0, parseInt(macroData.protein, 10) || 0),
+      carbs: Math.max(0, parseInt(macroData.carbs, 10) || 0),
+      fat: Math.max(0, parseInt(macroData.fat, 10) || 0)
+    };
+    localStorage.setItem(STORAGE_KEY_FOOD_OVERRIDES, JSON.stringify(overrides));
+  } catch (e) {}
+}
+
 // Helper function to remove Greek accent marks (tonoi / dialytika) and normalize text for accent-insensitive search
 export function removeGreekAccents(str) {
   if (!str) return '';
@@ -63,8 +89,21 @@ export function searchFoodDatabase(query) {
     return [];
   }
   const cleanQ = removeGreekAccents(query.trim());
+  const overrides = getFoodOverrides();
 
   return GREEK_FOOD_DATABASE.filter(item =>
     removeGreekAccents(item.name).includes(cleanQ)
-  ).slice(0, 8);
+  ).map(item => {
+    const key = removeGreekAccents(item.name);
+    if (overrides[key]) {
+      return {
+        ...item,
+        calories: overrides[key].calories,
+        protein: overrides[key].protein,
+        carbs: overrides[key].carbs,
+        fat: overrides[key].fat
+      };
+    }
+    return item;
+  }).slice(0, 8);
 }
