@@ -35,32 +35,6 @@ export const MEAL_CATEGORIES = [
   { id: 'snack', name: 'Σνακ', icon: 'Apple', color: 'from-pink-500 to-rose-500', bgColor: 'bg-pink-500/10', textColor: 'text-pink-400' }
 ];
 
-// Smart Category Staples
-export const CATEGORY_SMART_CHIPS = {
-  breakfast: [
-    { name: 'Ομελέτα 3 Αυγά & Φέτα', calories: 380, protein: 24, carbs: 4, fat: 30, quantity: '1 πιάτο' },
-    { name: 'Γιαούρτι 2% με Βρώμη & Μέλι', calories: 280, protein: 16, carbs: 42, fat: 5, quantity: '1 μπολ' },
-    { name: 'Τοστ Γαλοπούλα & Τυρί', calories: 280, protein: 16, carbs: 32, fat: 10, quantity: '1 τεμάχιο' },
-    { name: 'Φρέντο Μέτριο', calories: 60, protein: 1, carbs: 14, fat: 0, quantity: '1 ποτήρι' }
-  ],
-  lunch: [
-    { name: 'Στήθος Κοτόπουλο με Ρύζι', calories: 480, protein: 46, carbs: 50, fat: 8, quantity: '200g κοτόπουλο / 150g ρύζι' },
-    { name: 'Μπιφτέκια Μοσχαρίσια με Πατάτες', calories: 620, protein: 38, carbs: 45, fat: 30, quantity: '2 μπιφτέκια & πατάτες' },
-    { name: 'Χωριάτικη Σαλάτα & Ψωμί', calories: 420, protein: 12, carbs: 28, fat: 28, quantity: '1 μερίδα' },
-    { name: 'Σολωμός Ψητός με Λαχανικά', calories: 450, protein: 38, carbs: 10, fat: 28, quantity: '200g σολωμός' }
-  ],
-  dinner: [
-    { name: 'Σουβλάκι Κοτόπουλο Πίτα Απ\' όλα', calories: 550, protein: 32, carbs: 48, fat: 22, quantity: '1 τεμάχιο' },
-    { name: 'Σαλάτα Σεφ με Τόνο & Αυγό', calories: 360, protein: 34, carbs: 12, fat: 18, quantity: '1 σαλάτα' },
-    { name: 'Ομελέτα Λαχανικών & Σαλάτα', calories: 310, protein: 20, carbs: 14, fat: 20, quantity: '1 πιάτο' }
-  ],
-  snack: [
-    { name: 'Πρωτεϊνικό Shake Whey', calories: 220, protein: 30, carbs: 14, fat: 4, quantity: '1 scoop' },
-    { name: 'Μήλο & 10 Αμύγδαλα', calories: 160, protein: 4, carbs: 22, fat: 7, quantity: '1 μερίδα' },
-    { name: 'Γιαούρτι 2% με Μέλι & Καρύδια', calories: 240, protein: 14, carbs: 26, fat: 8, quantity: '1 μπολ' }
-  ]
-};
-
 // --- User Favorites Functions ---
 export function getFavorites() {
   try {
