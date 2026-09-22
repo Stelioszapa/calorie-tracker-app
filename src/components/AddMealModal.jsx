@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Edit2, Sparkles, Search, Scale, Star, Trash2, Check } from 'lucide-react';
-import { MEAL_CATEGORIES, CATEGORY_SMART_CHIPS, getFavorites, addFavorite, deleteFavorite, autoUpdateMatchingFavorite } from '../services/storage';
+import { X, Plus, Edit2, Search, Scale, Star, Trash2, Check } from 'lucide-react';
+import { MEAL_CATEGORIES, getFavorites, addFavorite, deleteFavorite, autoUpdateMatchingFavorite } from '../services/storage';
 import { searchFoodDatabase } from '../services/foodApi';
 
 export default function AddMealModal({
@@ -27,7 +27,6 @@ export default function AddMealModal({
   // Favorites State
   const [userFavorites, setUserFavorites] = useState([]);
   const [isSavedToFavs, setIsSavedToFavs] = useState(false);
-  const [activeTab, setActiveTab] = useState('favorites'); // 'favorites' | 'smartChips'
 
   const dropdownRef = useRef(null);
 
@@ -206,92 +205,55 @@ export default function AddMealModal({
           </button>
         </div>
 
-        {/* Favorites & Smart Category Chips Section */}
+        {/* Personal Favorites Section */}
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
-            <div className="flex space-x-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab('favorites')}
-                className={`px-3 py-1 rounded-lg font-bold transition flex items-center space-x-1 ${
-                  activeTab === 'favorites' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Star className="w-3.5 h-3.5 fill-current text-amber-400" />
-                <span>Τα Αγαπημένα μου ({userFavorites.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('smartChips')}
-                className={`px-3 py-1 rounded-lg font-bold transition flex items-center space-x-1 ${
-                  activeTab === 'smartChips' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Έξυπνα Chips ({currentSmartChips.length})</span>
-              </button>
+            <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-300">
+              <Star className="w-3.5 h-3.5 fill-current text-amber-400" />
+              <span>Τα Αγαπημένα μου ({userFavorites.length})</span>
             </div>
+            <span className="text-[10px] text-slate-400 font-normal">1-κλικ συμπλήρωση</span>
           </div>
 
-          {/* Tab Content: User Favorites */}
-          {activeTab === 'favorites' && (
-            <div className="min-h-[50px] max-h-36 overflow-y-auto p-2 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1">
-              {userFavorites.length === 0 ? (
-                <div className="text-center py-2 text-[11px] text-slate-500 italic">
-                  Δεν έχετε αποθηκεύσει ακόμα αγαπημένα γεύματα. Συμπληρώστε ένα γεύμα και πατήστε "⭐ Αποθήκευση στα Αγαπημένα"!
-                </div>
-              ) : (
-                userFavorites.map((fav) => (
-                  <div
-                    key={fav.id}
-                    onClick={() => handleSelectChipOrFavorite(fav)}
-                    className="p-2 bg-slate-900/80 hover:bg-slate-800 rounded-lg cursor-pointer transition flex items-center justify-between text-xs group border border-slate-800"
-                  >
-                    <div>
-                      <div className="font-bold text-white group-hover:text-amber-300 flex items-center space-x-1">
-                        <Star className="w-3 h-3 text-amber-400 fill-current" />
-                        <span>{fav.name}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {fav.quantity} • P:{fav.protein}g C:{fav.carbs}g F:{fav.fat}g
-                      </div>
+          <div className="min-h-[50px] max-h-36 overflow-y-auto p-2 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1">
+            {userFavorites.length === 0 ? (
+              <div className="text-center py-2 text-[11px] text-slate-500 italic">
+                Δεν έχετε αποθηκεύσει ακόμα αγαπημένα γεύματα. Συμπληρώστε ένα γεύμα και πατήστε "⭐ Αποθήκευση στα Αγαπημένα"!
+              </div>
+            ) : (
+              userFavorites.map((fav) => (
+                <div
+                  key={fav.id}
+                  onClick={() => handleSelectChipOrFavorite(fav)}
+                  className="p-2 bg-slate-900/80 hover:bg-slate-800 rounded-lg cursor-pointer transition flex items-center justify-between text-xs group border border-slate-800"
+                >
+                  <div>
+                    <div className="font-bold text-white group-hover:text-amber-300 flex items-center space-x-1">
+                      <Star className="w-3 h-3 text-amber-400 fill-current" />
+                      <span>{fav.name}</span>
                     </div>
-
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-emerald-400 text-xs bg-emerald-500/10 px-2 py-0.5 rounded">
-                        {fav.calories} kcal
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteFavorite(e, fav.id)}
-                        className="text-slate-500 hover:text-rose-400 p-1 transition"
-                        title="Διαγραφή από τα αγαπημένα"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="text-[10px] text-slate-400">
+                      {fav.quantity} • P:{fav.protein}g C:{fav.carbs}g F:{fav.fat}g
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
 
-          {/* Tab Content: Category Smart Chips */}
-          {activeTab === 'smartChips' && (
-            <div className="flex flex-wrap gap-1.5 p-2 bg-slate-950/80 border border-slate-800 rounded-xl max-h-36 overflow-y-auto">
-              {currentSmartChips.map((chip, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSelectChipOrFavorite(chip)}
-                  className="px-2.5 py-1 bg-slate-900 border border-slate-700/80 hover:border-emerald-500 rounded-lg text-xs font-semibold text-slate-200 hover:text-emerald-300 transition text-left"
-                >
-                  {chip.name} <span className="text-[10px] text-emerald-400 font-bold">({chip.calories} kcal)</span>
-                </button>
-              ))}
-            </div>
-          )}
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-emerald-400 text-xs bg-emerald-500/10 px-2 py-0.5 rounded">
+                      {fav.calories} kcal
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteFavorite(e, fav.id)}
+                      className="text-slate-500 hover:text-rose-400 p-1 transition"
+                      title="Διαγραφή από τα αγαπημένα"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Form */}
