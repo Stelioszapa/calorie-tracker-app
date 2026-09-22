@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>NutriCal - Calorie & Macronutrient Tracker</title>
-  
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -42,9 +42,9 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
-    // --- Local Storage Service ---
+    // --- Local Storage & Food Database ---
     const STORAGE_KEY_MEALS = 'nutrical_standalone_meals_v1';
     const STORAGE_KEY_PROFILES = 'nutrical_standalone_profiles_v1';
     const STORAGE_KEY_ACTIVE_P = 'nutrical_standalone_active_p_v1';
@@ -72,26 +72,44 @@
       }
     ];
 
-    const FOOD_PRESETS = [
-      { name: 'Χωριάτικη Σαλάτα', category: 'lunch', quantity: '1 μερίδα (350g)', calories: 420, protein: 12, carbs: 18, fat: 34 },
-      { name: 'Φρέντο Εσπρέσο (χωρίς ζάχαρη)', category: 'breakfast', quantity: '1 ποτήρι', calories: 5, protein: 0, carbs: 1, fat: 0 },
-      { name: 'Φρέντο Μέτριο', category: 'breakfast', quantity: '1 ποτήρι', calories: 60, protein: 1, carbs: 14, fat: 0 },
-      { name: 'Τοστ Γαλοπούλα & Τυρί', category: 'breakfast', quantity: '1 τεμάχιο', calories: 280, protein: 16, carbs: 32, fat: 10 },
-      { name: 'Ομελέτα 3 Αυγά & Φέτα', category: 'breakfast', quantity: '1 πιάτο', calories: 380, protein: 24, carbs: 4, fat: 30 },
-      { name: 'Σουβλάκι Κοτόπουλο Πίτα Απ\' όλα', category: 'dinner', quantity: '1 τεμάχιο', calories: 550, protein: 32, carbs: 48, fat: 22 },
-      { name: 'Στήθος Κοτόπουλο με Ρύζι', category: 'lunch', quantity: '200g κοτόπουλο / 150g ρύζι', calories: 480, protein: 46, carbs: 50, fat: 8 },
-      { name: 'Μπιφτέκια Μοσχαρίσια με Πατάτες', category: 'lunch', quantity: '2 μπιφτέκια & πατάτες', calories: 620, protein: 38, carbs: 45, fat: 30 },
-      { name: 'Γιαούρτι 2% με Μέλι & Καρύδια', category: 'snack', quantity: '1 μπολ', calories: 240, protein: 14, carbs: 26, fat: 8 },
-      { name: 'Μήλο & 10 Αμύγδαλα', category: 'snack', quantity: '1 μερίδα', calories: 160, protein: 4, carbs: 22, fat: 7 }
+    const GREEK_FOOD_DATABASE = [
+      { name: 'Στήθος Κοτόπουλο (ψητό)', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+      { name: 'Μπούτι Κοτόπουλο (ψητό)', calories: 209, protein: 26, carbs: 0, fat: 10.9 },
+      { name: 'Μπιφτέκι Μοσχαρίσιο', calories: 250, protein: 26, carbs: 0, fat: 16 },
+      { name: 'Μοσχάρι Σκέτο (ψητό)', calories: 217, protein: 26.1, carbs: 0, fat: 11.8 },
+      { name: 'Χοιρινή Πρίζολα', calories: 242, protein: 27, carbs: 0, fat: 14 },
+      { name: 'Σολωμός Ψητός', calories: 206, protein: 22, carbs: 0, fat: 12 },
+      { name: 'Τσιπούρα Ψητή', calories: 135, protein: 20, carbs: 0, fat: 5.5 },
+      { name: 'Τόνος σε Νερό', calories: 116, protein: 26, carbs: 0, fat: 1 },
+      { name: 'Αυγό Βραστό', calories: 155, protein: 13, carbs: 1.1, fat: 11 },
+      { name: 'Ασπράδι Αυγού', calories: 52, protein: 11, carbs: 0.7, fat: 0.2 },
+      { name: 'Γιαούρτι 2% Στραγγιστό', calories: 60, protein: 10, carbs: 3.8, fat: 2 },
+      { name: 'Φέτα', calories: 264, protein: 14, carbs: 4, fat: 21 },
+      { name: 'Cottage Cheese (Κότατζ)', calories: 98, protein: 11, carbs: 3.4, fat: 4.3 },
+      { name: 'Ρύζι Μπασμάτι (μαγειρεμένο)', calories: 130, protein: 2.7, carbs: 28, fat: 0.3 },
+      { name: 'Μακαρόνια (μαγειρεμένα)', calories: 158, protein: 5.8, carbs: 31, fat: 0.9 },
+      { name: 'Πατάτες Ψητές / Βραστές', calories: 93, protein: 2.5, carbs: 21, fat: 0.1 },
+      { name: 'Βρώμη (Oats)', calories: 389, protein: 16.9, carbs: 66, fat: 6.9 },
+      { name: 'Ψωμί Χωριάτικο', calories: 265, protein: 9, carbs: 49, fat: 3.2 },
+      { name: 'Χωριάτικη Σαλάτα', calories: 120, protein: 3.4, carbs: 5.1, fat: 9.7 },
+      { name: 'Αβοκάντο', calories: 160, protein: 2, carbs: 8.5, fat: 14.7 },
+      { name: 'Ελαιόλαδο', calories: 884, protein: 0, carbs: 0, fat: 100 },
+      { name: 'Αμύγδαλα', calories: 579, protein: 21, carbs: 22, fat: 50 },
+      { name: 'Μήλο', calories: 52, protein: 0.3, carbs: 14, fat: 0.2 },
+      { name: 'Μπανάνα', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 },
+      { name: 'Σουβλάκι Κοτόπουλο Καλαμάκι', calories: 180, protein: 28, carbs: 0, fat: 7 }
     ];
+
+    function searchFoodDatabase(q) {
+      if (!q || q.trim().length < 2) return [];
+      const cleanQ = q.trim().toLowerCase();
+      return GREEK_FOOD_DATABASE.filter(item => item.name.toLowerCase().includes(cleanQ)).slice(0, 7);
+    }
 
     function getProfiles() {
       try {
         const data = localStorage.getItem(STORAGE_KEY_PROFILES);
-        if (data) {
-          const parsed = JSON.parse(data);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
+        if (data) return JSON.parse(data);
       } catch (e) {}
       localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(DEFAULT_PROFILES));
       return DEFAULT_PROFILES;
@@ -138,19 +156,24 @@
       const [profiles, setProfiles] = useState(getProfiles());
       const [activeProfile, setActiveProfileState] = useState(getActiveProfile());
       const [meals, setMeals] = useState([]);
-      
+
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
       const [editingMeal, setEditingMeal] = useState(null);
 
-      // Form State
+      // Form & Search Autocomplete State
       const [foodName, setFoodName] = useState('');
-      const [foodQty, setFoodQty] = useState('1 μερίδα');
+      const [grams, setGrams] = useState(100);
+      const [foodQty, setFoodQty] = useState('100g');
       const [foodKcal, setFoodKcal] = useState('');
       const [foodProtein, setFoodProtein] = useState('');
       const [foodCarbs, setFoodCarbs] = useState('');
       const [foodFat, setFoodFat] = useState('');
       const [foodCat, setFoodCat] = useState('lunch');
+
+      const [searchResults, setSearchResults] = useState([]);
+      const [showDropdown, setShowDropdown] = useState(false);
+      const [selectedBase, setSelectedBase] = useState(null);
 
       useEffect(() => {
         refreshMeals(selectedDate);
@@ -169,6 +192,45 @@
         setMeals(all.filter(m => m.date === dateStr));
       };
 
+      const handleFoodNameChange = (val) => {
+        setFoodName(val);
+        if (val.trim().length >= 2) {
+          const res = searchFoodDatabase(val);
+          setSearchResults(res);
+          setShowDropdown(res.length > 0);
+        } else {
+          setSearchResults([]);
+          setShowDropdown(false);
+        }
+      };
+
+      const handleSelectFoodItem = (item) => {
+        setFoodName(item.name);
+        setSelectedBase(item);
+        setShowDropdown(false);
+        const curGrams = grams > 0 ? grams : 100;
+        setFoodQty(`${curGrams}g`);
+        calcMacros(item, curGrams);
+      };
+
+      const calcMacros = (base, gVal) => {
+        if (!base || gVal <= 0) return;
+        const f = gVal / 100;
+        setFoodKcal(Math.round(base.calories * f).toString());
+        setFoodProtein(Math.round(base.protein * f).toString());
+        setFoodCarbs(Math.round(base.carbs * f).toString());
+        setFoodFat(Math.round(base.fat * f).toString());
+      };
+
+      const handleGramsChange = (val) => {
+        const gNum = parseInt(val, 10) || 0;
+        setGrams(gNum);
+        setFoodQty(gNum > 0 ? `${gNum}g` : '1 μερίδα');
+        if (selectedBase && gNum > 0) {
+          calcMacros(selectedBase, gNum);
+        }
+      };
+
       const handleSaveMeal = (e) => {
         e.preventDefault();
         if (!foodName.trim() || !foodKcal) return;
@@ -183,15 +245,15 @@
         if (editingMeal) {
           const idx = raw.findIndex(m => m.id === editingMeal.id);
           if (idx !== -1) {
-            raw[idx] = { 
-              ...raw[idx], 
-              name: foodName, 
-              quantity: foodQty, 
-              calories: kcalNum, 
-              protein: pNum, 
-              carbs: cNum, 
-              fat: fNum, 
-              category: foodCat 
+            raw[idx] = {
+              ...raw[idx],
+              name: foodName,
+              quantity: foodQty,
+              calories: kcalNum,
+              protein: pNum,
+              carbs: cNum,
+              fat: fNum,
+              category: foodCat
             };
           }
         } else {
@@ -232,21 +294,26 @@
         if (meal) {
           setEditingMeal(meal);
           setFoodName(meal.name);
-          setFoodQty(meal.quantity);
+          const gVal = parseInt((meal.quantity || '').replace(/\D/g, ''), 10) || 100;
+          setGrams(gVal);
+          setFoodQty(meal.quantity || `${gVal}g`);
           setFoodKcal(meal.calories.toString());
           setFoodProtein((meal.protein || 0).toString());
           setFoodCarbs((meal.carbs || 0).toString());
           setFoodFat((meal.fat || 0).toString());
           setFoodCat(meal.category);
+          setSelectedBase(null);
         } else {
           setEditingMeal(null);
           setFoodName('');
-          setFoodQty('1 μερίδα');
+          setGrams(100);
+          setFoodQty('100g');
           setFoodKcal('');
           setFoodProtein('');
           setFoodCarbs('');
           setFoodFat('');
           setFoodCat('lunch');
+          setSelectedBase(null);
         }
         setIsModalOpen(true);
       };
@@ -266,44 +333,55 @@
       const isPink = activeProfile.color === 'pink' || activeProfile.id === 'profile_her';
 
       return (
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          {/* Header */}
-          <header className="glass-panel p-4 rounded-2xl flex items-center justify-between mb-6 border border-slate-800">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-xl">
-                🔥
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                  NutriCal Standalone
-                </h1>
-                <p className="text-[11px] text-slate-400">Calorie & Macro Tracker</p>
-              </div>
+        <div className="max-w-4xl mx-auto px-3 py-4">
+
+          {/* Header without NutriCal text to perfectly fit frame */}
+          <header className="glass-panel p-2.5 sm:p-3 rounded-2xl flex items-center justify-between mb-5 border border-slate-800 gap-2">
+
+            {/* Flame Icon */}
+            <div
+              className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-xl shrink-0 cursor-pointer"
+              onClick={() => setView('daily')}
+              title="NutriCal Tracker"
+            >
+              🔥
             </div>
 
-            <div className="flex items-center space-x-2">
+            {/* View Tabs */}
+            <div className="flex items-center space-x-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
               <button
                 onClick={() => setView('daily')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${view === 'daily' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${view === 'daily' ? 'bg-emerald-500 text-slate-950' : 'text-slate-300'}`}
               >
                 Ημέρα
               </button>
               <button
                 onClick={() => setView('calendar')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${view === 'calendar' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${view === 'calendar' ? 'bg-emerald-500 text-slate-950' : 'text-slate-300'}`}
               >
                 Ημερολόγιο
               </button>
+            </div>
 
+            {/* Active Profile Badge & Settings Icon */}
+            <div className="flex items-center space-x-1.5 shrink-0">
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition ${
                   isPink ? 'bg-pink-500/20 text-pink-300 border-pink-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 }`}
                 title="Αλλαγή προφίλ στις ρυθμίσεις"
               >
-                <span>{isPink ? '💖' : '👤'} {activeProfile.shortName || activeProfile.name}</span>
-                <span className="text-[10px] text-slate-400 ml-1">⚙️</span>
+                <span>{isPink ? '💖' : '👤'}</span>
+                <span className="max-w-[70px] truncate">{activeProfile.shortName || activeProfile.name}</span>
+              </button>
+
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-1.5 text-slate-300 hover:text-white bg-slate-800 rounded-xl border border-slate-700 text-sm"
+                title="Ρυθμίσεις"
+              >
+                ⚙️
               </button>
             </div>
           </header>
@@ -343,7 +421,7 @@
 
               {/* Progress & Macros Card */}
               <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-5">
-                
+
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-2">
                   <div>
                     <div className="text-xs text-slate-400 mb-1">
@@ -365,7 +443,7 @@
 
                 {/* Macro Target Progress Bars */}
                 <div className="grid grid-cols-3 gap-3 pt-2">
-                  
+
                   {/* Protein */}
                   <div className="bg-slate-900 p-2.5 rounded-2xl border border-rose-500/20 space-y-1">
                     <div className="flex justify-between text-[11px]">
@@ -450,7 +528,7 @@
             <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-4">
               <h3 className="font-bold text-lg text-white">Μηνιαίο Ημερολόγιο ({activeProfile.shortName || activeProfile.name})</h3>
               <p className="text-xs text-slate-400">Επιλέξτε ημερομηνία για να δείτε ή να καταχωρήσετε γεύματα.</p>
-              
+
               <div className="grid grid-cols-7 gap-2 text-center pt-2">
                 {['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ'].map((d, i) => (
                   <div key={i} className="text-xs font-bold text-slate-500 uppercase">{d}</div>
@@ -488,103 +566,12 @@
           {/* Add/Edit Modal */}
           {isModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass-modal">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 overflow-visible relative">
                 <h3 className="font-bold text-lg text-white">{editingMeal ? 'Επεξεργασία' : 'Προσθήκη'} Γεύματος</h3>
-                
-                {/* Presets */}
-                <div className="text-xs space-y-1">
-                  <span className="text-slate-400 font-medium">Έτοιμες επιλογές (με μακροσυστατικά):</span>
-                  <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto p-1.5 bg-slate-950 rounded-xl">
-                    {FOOD_PRESETS.map((p, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setFoodName(p.name);
-                          setFoodQty(p.quantity);
-                          setFoodKcal(p.calories.toString());
-                          setFoodProtein(p.protein.toString());
-                          setFoodCarbs(p.carbs.toString());
-                          setFoodFat(p.fat.toString());
-                          setFoodCat(p.category);
-                        }}
-                        className="px-2 py-1 bg-slate-800 text-[11px] text-emerald-300 rounded hover:bg-slate-700 text-left"
-                      >
-                        {p.name} ({p.calories}kcal)
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                <form onSubmit={handleSaveMeal} className="space-y-3 pt-2">
-                  <div>
-                    <label className="text-xs text-slate-300 block mb-1">Γεύμα</label>
-                    <input
-                      type="text"
-                      required
-                      value={foodName}
-                      onChange={(e) => setFoodName(e.target.value)}
-                      placeholder="π.χ. Κοτόπουλο με ρύζι"
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white"
-                    />
-                  </div>
+                <form onSubmit={handleSaveMeal} className="space-y-3 pt-1">
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-slate-300 block mb-1">Ποσότητα</label>
-                      <input
-                        type="text"
-                        value={foodQty}
-                        onChange={(e) => setFoodQty(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-emerald-400 font-bold block mb-1">Θερμίδες (kcal)*</label>
-                      <input
-                        type="number"
-                        required
-                        value={foodKcal}
-                        onChange={(e) => setFoodKcal(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/40 rounded-xl text-sm text-emerald-400 font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Macronutrients Grid */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[11px] text-rose-400 font-bold block mb-1">Πρωτεΐνη (g)</label>
-                      <input
-                        type="number"
-                        value={foodProtein}
-                        onChange={(e) => setFoodProtein(e.target.value)}
-                        placeholder="0"
-                        className="w-full px-2.5 py-1.5 bg-slate-950 border border-rose-500/40 rounded-xl text-xs text-rose-300 font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-amber-400 font-bold block mb-1">Υδατάνθρ. (g)</label>
-                      <input
-                        type="number"
-                        value={foodCarbs}
-                        onChange={(e) => setFoodCarbs(e.target.value)}
-                        placeholder="0"
-                        className="w-full px-2.5 py-1.5 bg-slate-950 border border-amber-500/40 rounded-xl text-xs text-amber-300 font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-cyan-400 font-bold block mb-1">Λιπαρά (g)</label>
-                      <input
-                        type="number"
-                        value={foodFat}
-                        onChange={(e) => setFoodFat(e.target.value)}
-                        placeholder="0"
-                        className="w-full px-2.5 py-1.5 bg-slate-950 border border-cyan-500/40 rounded-xl text-xs text-cyan-300 font-bold"
-                      />
-                    </div>
-                  </div>
-
+                  {/* Category Selector */}
                   <div>
                     <label className="text-xs text-slate-300 block mb-1">Κατηγορία</label>
                     <select
@@ -597,6 +584,104 @@
                       <option value="dinner">Βραδινό</option>
                       <option value="snack">Σνακ</option>
                     </select>
+                  </div>
+
+                  {/* Food Name Search with Autocomplete Dropdown */}
+                  <div className="relative">
+                    <label className="text-xs text-slate-300 block mb-1">Όνομα Τροφίμου (Αναζήτηση στην Τράπεζα)*</label>
+                    <input
+                      type="text"
+                      required
+                      value={foodName}
+                      onChange={(e) => handleFoodNameChange(e.target.value)}
+                      onFocus={() => foodName.trim().length >= 2 && setShowDropdown(true)}
+                      placeholder="π.χ. Κοτόπουλο, Ρύζι, Μήλο, Αυγό..."
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                    />
+
+                    {/* Dropdown */}
+                    {showDropdown && searchResults.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-slate-950 border border-emerald-500/40 rounded-xl shadow-2xl max-h-48 overflow-y-auto divide-y divide-slate-800">
+                        {searchResults.map((item, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => handleSelectFoodItem(item)}
+                            className="p-2 hover:bg-slate-800 cursor-pointer text-xs flex justify-between items-center"
+                          >
+                            <div>
+                              <div className="font-bold text-white">{item.name}</div>
+                              <div className="text-[10px] text-slate-400">P:{item.protein}g C:{item.carbs}g F:{item.fat}g</div>
+                            </div>
+                            <span className="text-emerald-400 font-bold">{item.calories} kcal/100g</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Grams & Quantity Grid */}
+                  <div className="grid grid-cols-2 gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800">
+                    <div>
+                      <label className="text-[11px] text-teal-400 font-bold block mb-1">Βάρος σε Γραμμάρια (g)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5000"
+                        value={grams}
+                        onChange={(e) => handleGramsChange(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-900 border border-teal-500/40 rounded-lg text-xs font-bold text-teal-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-300 block mb-1">Περιγραφή</label>
+                      <input
+                        type="text"
+                        value={foodQty}
+                        onChange={(e) => setFoodQty(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Calories & Macros Grid (Editable) */}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    <div>
+                      <label className="text-[10px] text-emerald-400 font-bold block mb-1">Kcal*</label>
+                      <input
+                        type="number"
+                        required
+                        value={foodKcal}
+                        onChange={(e) => setFoodKcal(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-slate-950 border border-emerald-500/40 rounded-xl text-xs text-emerald-400 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-rose-400 font-bold block mb-1">P (g)</label>
+                      <input
+                        type="number"
+                        value={foodProtein}
+                        onChange={(e) => setFoodProtein(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-slate-950 border border-rose-500/40 rounded-xl text-xs text-rose-300 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-amber-400 font-bold block mb-1">C (g)</label>
+                      <input
+                        type="number"
+                        value={foodCarbs}
+                        onChange={(e) => setFoodCarbs(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-slate-950 border border-amber-500/40 rounded-xl text-xs text-amber-300 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-cyan-400 font-bold block mb-1">F (g)</label>
+                      <input
+                        type="number"
+                        value={foodFat}
+                        onChange={(e) => setFoodFat(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-slate-950 border border-cyan-500/40 rounded-xl text-xs text-cyan-300 font-bold"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex space-x-2 pt-2">
@@ -631,7 +716,7 @@
                 {/* Profile Switcher & Target Editor */}
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-300 block">Επιλέξτε Ενεργό Προφίλ:</label>
-                  
+
                   <div className="space-y-3">
                     {profiles.map(p => {
                       const isActive = activeProfile.id === p.id;

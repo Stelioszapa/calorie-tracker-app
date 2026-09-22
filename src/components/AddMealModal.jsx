@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit2, Sparkles, Utensils, SunMedium, Moon, Apple } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Plus, Edit2, Sparkles, Search, Scale } from 'lucide-react';
 import { MEAL_CATEGORIES, FOOD_PRESETS } from '../services/storage';
+import { searchFoodDatabase } from '../services/foodApi';
 
 export default function AddMealModal({
   isOpen,
@@ -10,35 +11,119 @@ export default function AddMealModal({
   selectedDate
 }) {
   const [name, setName] = useState('');
-  const [quantity, setQuantity] = useState('1 μερίδα');
+  const [grams, setGrams] = useState(100);
+  const [quantityText, setQuantityText] = useState('100g');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
   const [category, setCategory] = useState('lunch');
+
+  // Search & Base Macro State
+  const [searchResults, setSearchResults] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedBase, setSelectedBase] = useState(null); // { calories, protein, carbs, fat } per 100g
   const [showPresets, setShowPresets] = useState(false);
+
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     if (editingMeal) {
       setName(editingMeal.name || '');
-      setQuantity(editingMeal.quantity || '1 μερίδα');
+      const parsedGrams = parseInt((editingMeal.quantity || '').replace(/\D/g, ''), 10) || 100;
+      setGrams(parsedGrams);
+      setQuantityText(editingMeal.quantity || `${parsedGrams}g`);
       setCalories(editingMeal.calories ? editingMeal.calories.toString() : '');
       setProtein(editingMeal.protein !== undefined ? editingMeal.protein.toString() : '0');
       setCarbs(editingMeal.carbs !== undefined ? editingMeal.carbs.toString() : '0');
       setFat(editingMeal.fat !== undefined ? editingMeal.fat.toString() : '0');
       setCategory(editingMeal.category || 'lunch');
+      setSelectedBase(null);
     } else {
       setName('');
-      setQuantity('1 μερίδα');
+      setGrams(100);
+      setQuantityText('100g');
       setCalories('');
       setProtein('');
       setCarbs('');
       setFat('');
       setCategory('lunch');
+      setSelectedBase(null);
     }
   }, [editingMeal, isOpen]);
 
+  // Handle outside click to close autocomplete dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (!isOpen) return null;
+
+  // Live Food Search Handler
+  const handleNameChange = (val) => {
+    setName(val);
+    if (val.trim().length >= 2) {
+      const results = searchFoodDatabase(val);
+      setSearchResults(results);
+      setShowDropdown(results.length > 0);
+    } else {
+      setSearchResults([]);
+      setShowDropdown(false);
+    }
+  };
+
+  // Select item from Search Autocomplete
+  const handleSelectFoodItem = (item) => {
+    setName(item.name);
+    setSelectedBase(item);
+    setShowDropdown(false);
+
+    // Apply scaling based on current grams (default 100g)
+    const currentGrams = grams > 0 ? grams : 100;
+    setQuantityText(`${currentGrams}g`);
+    calculateMacrosForGrams(item, currentGrams);
+  };
+
+  // Calculate Macros dynamically based on Grams
+  const calculateMacrosForGrams = (base, gVal) => {
+    if (!base || gVal <= 0) return;
+    const factor = gVal / 100;
+    setCalories(Math.round(base.calories * factor).toString());
+    setProtein(Math.round(base.protein * factor).toString());
+    setCarbs(Math.round(base.carbs * factor).toString());
+    setFat(Math.round(base.fat * factor).toString());
+  };
+
+  // Grams Change Handler
+  const handleGramsChange = (newGramsVal) => {
+    const numGrams = parseInt(newGramsVal, 10) || 0;
+    setGrams(numGrams);
+    setQuantityText(numGrams > 0 ? `${numGrams}g` : '1 μερίδα');
+
+    if (selectedBase && numGrams > 0) {
+      calculateMacrosForGrams(selectedBase, numGrams);
+    }
+  };
+
+  const handleSelectPreset = (preset) => {
+    setName(preset.name);
+    const pGrams = parseInt((preset.quantity || '').replace(/\D/g, ''), 10) || 100;
+    setGrams(pGrams);
+    setQuantityText(preset.quantity);
+    setCalories(preset.calories.toString());
+    setProtein((preset.protein || 0).toString());
+    setCarbs((preset.carbs || 0).toString());
+    setFat((preset.fat || 0).toString());
+    setCategory(preset.category);
+    setSelectedBase(null);
+    setShowPresets(false);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -48,7 +133,7 @@ export default function AddMealModal({
       id: editingMeal ? editingMeal.id : undefined,
       date: selectedDate,
       name,
-      quantity,
+      quantity: quantityText || `${grams}g`,
       calories: parseInt(calories, 10) || 0,
       protein: parseInt(protein, 10) || 0,
       carbs: parseInt(carbs, 10) || 0,
@@ -59,21 +144,10 @@ export default function AddMealModal({
     onClose();
   };
 
-  const handleSelectPreset = (preset) => {
-    setName(preset.name);
-    setQuantity(preset.quantity);
-    setCalories(preset.calories.toString());
-    setProtein((preset.protein || 0).toString());
-    setCarbs((preset.carbs || 0).toString());
-    setFat((preset.fat || 0).toString());
-    setCategory(preset.category);
-    setShowPresets(false);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass-modal animate-fade-in">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl overflow-hidden relative">
-        
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl overflow-visible relative">
+
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center space-x-2">
@@ -112,7 +186,7 @@ export default function AddMealModal({
           </button>
 
           {showPresets && (
-            <div className="mt-2 max-h-44 overflow-y-auto p-2 bg-slate-950/80 border border-slate-800 rounded-xl grid grid-cols-1 gap-1.5">
+            <div className="mt-2 max-h-40 overflow-y-auto p-2 bg-slate-950/90 border border-slate-800 rounded-xl grid grid-cols-1 gap-1.5">
               {FOOD_PRESETS.map((preset, idx) => (
                 <div
                   key={idx}
@@ -138,7 +212,7 @@ export default function AddMealModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          
+
           {/* Category Selector */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
@@ -162,37 +236,91 @@ export default function AddMealModal({
             </div>
           </div>
 
-          {/* Food Name & Quantity Grid */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Όνομα Τροφίμου / Γεύματος *
-              </label>
+          {/* Food Name Search Input with Autocomplete Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center justify-between">
+              <span>Όνομα Τροφίμου (Αναζήτηση στην Τράπεζα Τροφίμων) *</span>
+              <span className="text-[10px] text-emerald-400 font-normal">Προαιρετική επιλογή από τη λίστα</span>
+            </label>
+
+            <div className="relative">
               <input
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="π.χ. Κοτόπουλο με Ρύζι"
-                className="w-full px-3.5 py-2 bg-slate-950/60 border border-slate-700/70 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+                onChange={(e) => handleNameChange(e.target.value)}
+                onFocus={() => name.trim().length >= 2 && setShowDropdown(true)}
+                placeholder="Πληκτρολογήστε π.χ. Κοτόπουλο, Ρύζι, Αυγό, Μήλο..."
+                className="w-full pl-9 pr-3.5 py-2.5 bg-slate-950/60 border border-slate-700/70 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
               />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+            </div>
+
+            {/* Autocomplete Dropdown Results */}
+            {showDropdown && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-slate-950 border border-emerald-500/40 rounded-2xl shadow-2xl max-h-52 overflow-y-auto divide-y divide-slate-800 animate-fade-in">
+                <div className="px-3 py-1.5 bg-slate-900 text-[10px] text-slate-400 font-semibold uppercase">
+                  Αποτελέσματα Αναζήτησης (ανά 100g)
+                </div>
+                {searchResults.map((item, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSelectFoodItem(item)}
+                    className="p-2.5 hover:bg-slate-800/80 cursor-pointer transition flex items-center justify-between group"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">
+                        {item.name}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        P: <span className="text-rose-300 font-semibold">{item.protein}g</span> • C: <span className="text-amber-300 font-semibold">{item.carbs}g</span> • F: <span className="text-cyan-300 font-semibold">{item.fat}g</span>
+                      </div>
+                    </div>
+                    <div className="text-emerald-400 text-xs font-black bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">
+                      {item.calories} kcal /100g
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Weight / Grams Scaler & Quantity Grid */}
+          <div className="grid grid-cols-2 gap-3 p-3 bg-slate-950/70 border border-slate-800 rounded-2xl">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1 flex items-center space-x-1">
+                <Scale className="w-3.5 h-3.5 text-teal-400" />
+                <span>Βάρος σε Γραμμάρια (g)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="1"
+                  max="5000"
+                  value={grams}
+                  onChange={(e) => handleGramsChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900 border border-teal-500/40 rounded-xl text-sm font-extrabold text-teal-300 focus:outline-none focus:border-teal-500"
+                />
+                <span className="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">g</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Υπολογίζει αυτόματα τις θερμίδες!</p>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Ποσότητα
+                Περιγραφή Ποσότητας
               </label>
               <input
                 type="text"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="1 μερίδα"
-                className="w-full px-3 py-2 bg-slate-950/60 border border-slate-700/70 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+                value={quantityText}
+                onChange={(e) => setQuantityText(e.target.value)}
+                placeholder="π.χ. 150g"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700/70 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
           </div>
 
-          {/* Calories & Macronutrients Grid */}
+          {/* Calories & Macronutrients Grid (Can be manually overridden) */}
           <div className="grid grid-cols-4 gap-2">
             <div>
               <label className="block text-[11px] font-semibold text-emerald-400 mb-1">
